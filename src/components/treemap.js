@@ -1,43 +1,78 @@
 import React from "react";
 import { treemap, hierarchy, scaleOrdinal, schemeDark2 } from "d3";
 
-
 export function TreeMap(props) {
-    const { margin, svg_width, svg_height, tree, selectedCell, setSelectedCell } = props;
+    const {
+        margin,
+        svg_width,
+        svg_height,
+        tree,
+        selectedCell,
+        setSelectedCell
+    } = props;
 
-    // 1. 设置画布内部大小
     const innerWidth = svg_width - margin.left - margin.right;
     const innerHeight = svg_height - margin.top - margin.bottom;
 
-    // 2. 构建层级结构并应用 treemap 布局
-    const root = hierarchy(tree).sum(d => d.value);
-    const layout = treemap().size([innerWidth, innerHeight]).padding(1);
-    layout(root);
+    const root = hierarchy(tree)
+        .sum(d => d.value)
+        .sort((a, b) => b.value - a.value);
 
-    // 3. 定义颜色映射
+    treemap()
+        .size([innerWidth, innerHeight])
+        .padding(2)(root);
+
     const color = scaleOrdinal(schemeDark2);
 
     return (
-        <svg
-            width={svg_width}
-            height={svg_height}
-        >
+        <svg width={svg_width} height={svg_height}>
             <g transform={`translate(${margin.left}, ${margin.top})`}>
-                {root.leaves().map((node, i) => (
-                    <g key={i}>
-                        <rect
-                            x={node.x0}
-                            y={node.y0}
-                            width={node.x1 - node.x0}
-                            height={node.y1 - node.y0}
-                            fill={color(node.data.name)}
-                            stroke="white"
-                            onClick={() => setSelectedCell(node.data.name)}
-                            style={{ cursor: "pointer" }}
-                        />
-                        <Text node={node} />
-                    </g>
-                ))}
+                {root.leaves().map((node, i) => {
+                    const { x0, y0, x1, y1, data } = node;
+                    const width = x1 - x0;
+                    const height = y1 - y0;
+
+                    // ✅ 从真实字段中取值
+                    const attrKey = data.attr || "unknown";
+                    const attrVal = data.name || "N/A";
+
+                    return (
+                        <g key={i}>
+                            <rect
+                                x={x0}
+                                y={y0}
+                                width={width}
+                                height={height}
+                                fill={color(attrVal)}
+                                stroke="#000"
+                                strokeWidth={1}
+                                onClick={() => setSelectedCell?.(data)}
+                                style={{ cursor: "pointer" }}
+                            />
+
+                            {/* 左上角文字 */}
+                            <text x={x0 + 4} y={y0 + 14} fontSize={12} fill="white">
+                                {attrKey}: {attrVal}
+                            </text>
+                            <text x={x0 + 4} y={y0 + 28} fontSize={12} fill="white">
+                                Value: {data.value}%
+                            </text>
+
+                            {/* 中心淡色大号文字 */}
+                            <text
+                                x={(x0 + x1) / 2}
+                                y={(y0 + y1) / 2}
+                                fontSize={24}
+                                fontWeight="bold"
+                                textAnchor="middle"
+                                alignmentBaseline="middle"
+                                fill="rgba(0,0,0,0.2)"
+                            >
+                                {attrKey}: {attrVal}
+                            </text>
+                        </g>
+                    );
+                })}
             </g>
         </svg>
     );
